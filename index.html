@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Icelandic Towns</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.5.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.5.0/mapbox-gl.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #container {
+            display: flex;
+            height: 100vh;
+            flex-direction: row;
+            align-items: stretch;
+        }
+
+        #side-panel {
+            flex-basis: 500px;
+            overflow-y: scroll;
+        }
+
+        #map {
+            flex-grow: 1;
+        }
+
+        @media (max-width: 1024px) {
+            #side-panel {
+                display: none;
+            }
+        }
+
+        #title {
+            margin-left: 0.95rem;
+        }
+
+        button {
+            margin-bottom: 10px;
+            margin-left: 0.95rem;
+        }
+
+        table {
+            border-collapse: collapse;
+            border-spacing: 0;
+            width: 100%;
+            border: 1px solid #ddd;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 16px;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+
+<body>
+    <main id="container">
+        <div id="side-panel">
+
+            <h2 id="title">Icelandic Towns</h2>
+            <button onclick="sortTable()">Sort by Name</button>
+
+            <table>
+                <tr>
+                    <th>Name</th>
+                </tr>
+            </table>
+
+        </div>
+        
+        <div id="map"></div>
+    </main>
+
+    <script>
+        mapboxgl.accessToken =
+            'pk.eyJ1IjoiYXplZW0yNCIsImEiOiJjbG93MnNkeTkwdWdpMnJvN2Y5ZXRwazNjIn0.okNOlWQrPErSr8fNahF9VA';
+
+        let map = new mapboxgl.Map({
+            container: 'map', // container ID
+            style: 'mapbox://styles/mapbox/navigation-night-v1', // style URL
+
+            // This is a custom style I made, but only the base colour appears
+            // style: 'mapbox://styles/azeem24/cloounc71004b01rb6qra9lbl', 
+
+            zoom: 5.5, // starting zoom
+            center: [-19, 65] // starting center
+        });
+
+        async function geojsonFetch() {
+
+            let response = await fetch('assets/towns.geojson');
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            let towns = await response.json();
+
+            response = await fetch('assets/iceland_regions.geojson');
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            let iceland = await response.json();
+
+            var table = document.getElementsByTagName("table");
+            for (let i = 0; i < towns.features.length; i++) {
+                // console.log(towns.features[i].properties.id);
+
+                var lng = await towns.features[i].geometry.coordinates[0];
+                var lat = await towns.features[i].geometry.coordinates[1];
+
+                // Create an empty <tr> element and add it to the 1st position of the table:
+                var row = table[0].insertRow(-1);
+
+                var cell = row.insertCell(0);
+                cell.innerHTML = await towns.features[i].properties.Name;
+
+            }
+
+            map.on('load', () => {
+
+                map.addSource('towns', {
+                    type: 'geojson',
+                    data: towns
+                });
+
+                map.addLayer({
+                    'id': 'towns-layer',
+                    'type': 'circle',
+                    'source': 'towns',
+                    'paint': {
+                        'circle-radius': 4,
+                        'circle-stroke-width': 2,
+                        'circle-color': '#64a199',
+                        'circle-stroke-color': 'white'
+                    }
+                });
+
+                map.addSource('iceland', {
+                    type: 'geojson',
+                    data: iceland
+                });
+
+                map.addLayer({
+                    'id': 'iceland-layer',
+                    'type': 'fill',
+                    'source': 'iceland',
+                    'paint': {
+                        'fill-color': '#cbe6e4', 
+                        'fill-opacity': 0.2
+                    }
+                });
+            });
+        }
+
+        geojsonFetch()
+            .catch(e => {
+                console.log('There has been a problem with your fetch operation: ' + e.message);
+            });
+
+        function sortTable() {
+            var table, rows, switching, i, x, y, shouldSwitch;
+            table = document.querySelector("table");
+            switching = true;
+
+            /* Make a loop that will continue until
+            no switching has been done: */
+            while (switching) {
+                // Start by saying: no switching is done:
+                switching = false;
+                rows = table.rows;
+
+                /* Loop through all table rows (except the
+                first, which contains table headers): */
+                for (i = 1; i < (rows.length - 1); i++) {
+                    // Start by saying there should be no switching:
+                    shouldSwitch = false;
+
+                    /* Get the two elements you want to compare,
+                    one from current row and one from the next: */
+                    x = rows[i].getElementsByTagName("td")[0];
+                    y = rows[i + 1].getElementsByTagName("td")[0];
+                    
+                    // Check if the two rows should switch place:
+                    if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+                        // If so, mark as a switch and break the loop:
+                        shouldSwitch = true;
+                        break;
+                    }
+                }
+
+                if (shouldSwitch) {
+                    /* If a switch has been marked, make the switch
+                    and mark that a switch has been done: */
+                    rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                    switching = true;
+                }
+            }
+        }
+    </script>
+</body>
+</html>
